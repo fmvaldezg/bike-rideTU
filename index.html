@@ -9,141 +9,162 @@
 <style>
 body { margin: 0; padding: 0; }
 #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+.btn-container { position: absolute; top: 10px; right: 10px; z-index: 1; }
 </style>
 </head>
 <body>
 <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
 <div id="map"></div>
+<div class="btn-container">
+    <button id="restartButton">Restart Animation</button>
+</div>
 <script>
 	mapboxgl.accessToken = 'pk.eyJ1IjoiZm12YWxkZXpnODQiLCJhIjoiY2w5eWJzMzkwMDNiaDNvbGltamV1ajdvNiJ9.esyugI1HyBVPAQcRN551xw';
-    (async () => {
-        const map = new mapboxgl.Map({
-            container: 'map',
-            zoom: 10.5,
-            center: [-75.13626, 40.16359],
-            pitch: 43.5,
-            bearing: 0,
-            // Choose from Mapbox's core styles, or make your own style with Mapbox Studio
-            style: 'mapbox://styles/mapbox/satellite-streets-v12',
-            interactive: false,
-            hash: false
-        });
+(async () => {
+    const map = new mapboxgl.Map({
+        container: 'map',
+        zoom: 13.5,
+        center: [-75.15704, 39.98151],
+        pitch: 50,
+        bearing: 0,
+        // Choose from Mapbox's core styles, or make your own style with Mapbox Studio
+        style: 'mapbox://styles/mapbox/satellite-streets-v12',
+        interactive: false,
+        hash: false
+    });
 
-        // Start downloading the route data, and wait for map load to occur in parallel
-        const [pinRouteGeojson] = await Promise.all([
-            fetch(
-                'https://raw.githubusercontent.com/fmvaldezg/bike-rideTU/main/data/route-pin.geojson'
-            ).then((response) => response.json()),
-            map.once('style.load')
-        ]);
+    // Start downloading the route data, and wait for map load to occur in parallel
+    const [pinRouteGeojson] = await Promise.all([
+        fetch(
+            'https://raw.githubusercontent.com/fmvaldezg/bike-rideTU/main/data/route-pin.geojson'
+        ).then((response) => response.json()),
+        map.once('style.load')
+    ]);
 
-        // Set custom fog
-        map.setFog({
-            'range': [-0.5, 2],
-            'color': '#def',
-            'high-color': '#def',
-            'space-color': '#def'
-        });
+    // Set custom fog
+    map.setFog({
+        'range': [-0.5, 2],
+        'color': '#def',
+        'high-color': '#def',
+        'space-color': '#def'
+    });
 
-        // Add terrain source, with slight exaggeration
-        map.addSource('mapbox-dem', {
-            'type': 'raster-dem',
-            'url': 'mapbox://mapbox.terrain-rgb',
-            'tileSize': 512,
-            'maxzoom': 14
-        });
-        map.setTerrain({ 'source': 'mapbox-dem', 'exaggeration': 1.5 });
+    // Add terrain source, with slight exaggeration
+    map.addSource('mapbox-dem', {
+        'type': 'raster-dem',
+        'url': 'mapbox://mapbox.terrain-rgb',
+        'tileSize': 512,
+        'maxzoom': 14
+    });
+    map.setTerrain({ 'source': 'mapbox-dem', 'exaggeration': 1.5 });
 
-        const pinRoute = pinRouteGeojson.features[0].geometry.coordinates;
-        // Create the marker and popup that will display the elevation queries
-        const popup = new mapboxgl.Popup({ closeButton: false });
-        const marker = new mapboxgl.Marker({
-            color: 'red',
-            scale: 0.8,
-            draggable: false,
-            pitchAlignment: 'auto',
-            rotationAlignment: 'auto'
-        })
-            .setLngLat(pinRoute[0])
-            .setPopup(popup)
-            .addTo(map)
-            .togglePopup();
+    const pinRoute = pinRouteGeojson.features[0].geometry.coordinates;
+    // Create the marker and popup that will display the elevation queries
+    const popup = new mapboxgl.Popup({ closeButton: false });
+    const marker = new mapboxgl.Marker({
+        color: 'red',
+        scale: 0.8,
+        draggable: false,
+        pitchAlignment: 'auto',
+        rotationAlignment: 'auto'
+    })
+        .setLngLat(pinRoute[0])
+        .setPopup(popup)
+        .addTo(map)
+        .togglePopup();
 
-        // Add a line feature and layer. This feature will get updated as we progress the animation
-        map.addSource('line', {
-            type: 'geojson',
-            // Line metrics is required to use the 'line-progress' property
-            lineMetrics: true,
-            data: pinRouteGeojson
-        });
-        map.addLayer({
-            type: 'line',
-            source: 'line',
-            id: 'line',
-            paint: {
-                'line-color': 'rgba(0,0,0,0)',
-                'line-width': 5
-            },
-            layout: {
-                'line-cap': 'round',
-                'line-join': 'round'
-            }
-        });
+    // Add a line feature and layer. This feature will get updated as we progress the animation
+    map.addSource('line', {
+        type: 'geojson',
+        // Line metrics is required to use the 'line-progress' property
+        lineMetrics: true,
+        data: pinRouteGeojson
+    });
+    map.addLayer({
+        type: 'line',
+        source: 'line',
+        id: 'line',
+        paint: {
+            'line-color': 'rgba(0,0,0,0)',
+            'line-width': 5
+        },
+        layout: {
+            'line-cap': 'round',
+            'line-join': 'round'
+        }
+    });
 
-        await map.once('idle');
-        // The total animation duration, in milliseconds
-        const animationDuration = 20000;
-        // Use the https://turfjs.org/ library to calculate line distances and
-        // sample the line at a given percentage with the turf.along function.
-        const path = turf.lineString(pinRoute);
-        // Get the total line distance
-        const pathDistance = turf.lineDistance(path);
-        let start;
-        function frame(time) {
-            if (!start) start = time;
-            const animationPhase = (time - start) / animationDuration;
-            if (animationPhase > 1) {
-                return;
-            }
-
-            // Get the new latitude and longitude by sampling along the path
-            const alongPath = turf.along(path, pathDistance * animationPhase)
-                .geometry.coordinates;
-            const lngLat = {
-                lng: alongPath[0],
-                lat: alongPath[1]
-            };
-
-            // Sample the terrain elevation. We round to an integer value to
-            // prevent showing a lot of digits during the animation
-            const elevation = Math.floor(
-                // Do not use terrain exaggeration to get actual meter values
-                map.queryTerrainElevation(lngLat, { exaggerated: false })
-            );
-
-            // Update the popup altitude value and marker location
-            popup.setHTML('Altitude: ' + elevation + 'm<br/>');
-            marker.setLngLat(lngLat);
-
-            // Reduce the visible length of the line by using a line-gradient to cutoff the line
-            // animationPhase is a value between 0 and 1 that reprents the progress of the animation
-            map.setPaintProperty('line', 'line-gradient', [
-                'step',
-                ['line-progress'],
-                'red',
-                animationPhase,
-                'rgba(255, 0, 0, 0)'
-            ]);
-
-            // Rotate the camera at a slightly lower speed to give some parallax effect in the background
-            const rotation = 150 - animationPhase * 40.0;
-            map.setBearing(rotation % 360);
-
-            window.requestAnimationFrame(frame);
+    await map.once('idle');
+    // The total animation duration, in milliseconds
+    const animationDuration = 35000;
+    // Use the https://turfjs.org/ library to calculate line distances and
+    // sample the line at a given percentage with the turf.along function.
+    const path = turf.lineString(pinRoute);
+    // Get the total line distance
+    const pathDistance = turf.lineDistance(path);
+    let start;
+    let animationFrameId;
+    function frame(time) {
+        if (!start) start = time;
+        const animationPhase = (time - start) / animationDuration;
+        if (animationPhase > 1) {
+            return;
         }
 
-        window.requestAnimationFrame(frame);
-    })();
+        // Get the new latitude and longitude by sampling along the path
+        const alongPath = turf.along(path, pathDistance * animationPhase)
+            .geometry.coordinates;
+        const lngLat = {
+            lng: alongPath[0],
+            lat: alongPath[1]
+        };
+
+        // Sample the terrain elevation. We round to an integer value to
+        // prevent showing a lot of digits during the animation
+        const elevation = Math.floor(
+            // Do not use terrain exaggeration to get actual meter values
+            map.queryTerrainElevation(lngLat, { exaggerated: false })
+        );
+
+        // Update the popup altitude value and marker location
+        popup.setHTML('Altitude: ' + elevation + 'm<br/>');
+        marker.setLngLat(lngLat);
+
+        // Set the map's center to the new position of the pin
+        map.setCenter(lngLat);
+
+        // Reduce the visible length of the line by using a line-gradient to cutoff the line
+        // animationPhase is a value between 0 and 1 that reprents the progress of the animation
+        map.setPaintProperty('line', 'line-gradient', [
+            'step',
+            ['line-progress'],
+            'red',
+            animationPhase,
+            'rgba(255, 0, 0, 0)'
+        ]);
+
+        // Rotate the camera at a slightly lower speed to give some parallax effect in the background
+        const rotation = 150 - animationPhase * 40.0;
+        map.setBearing(rotation % -100);
+
+        // Request the next animation frame
+        animationFrameId = window.requestAnimationFrame(frame);
+    }
+
+    // Add event listener to restart button
+    document.getElementById('restartButton').addEventListener('click', function() {
+        // Reset start variable to null to restart animation
+        start = null;
+        // Stop the current animation loop
+        cancelAnimationFrame(animationFrameId);
+        // Start a new animation loop
+        animationFrameId = window.requestAnimationFrame(frame);
+    });
+
+    // Start the animation loop
+    animationFrameId = window.requestAnimationFrame(frame);
+})();
+
 </script>
 
 </body>
