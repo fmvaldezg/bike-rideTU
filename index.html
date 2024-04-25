@@ -65,7 +65,7 @@ body { margin: 0; padding: 0; }
     // Create the marker and popup that will display the elevation queries
     const popup = new mapboxgl.Popup({ closeButton: false });
     const marker = new mapboxgl.Marker({
-        color: 'red',
+        color: '#B50043',
         scale: 0.8,
         draggable: false,
         pitchAlignment: 'auto',
@@ -88,7 +88,7 @@ body { margin: 0; padding: 0; }
         source: 'line',
         id: 'line',
         paint: {
-            'line-color': 'rgba(0,0,0,0)',
+            'line-color': '#B50043',
             'line-width': 5
         },
         layout: {
@@ -99,7 +99,7 @@ body { margin: 0; padding: 0; }
     map.on('load', () => {
         //Add Markers for main campus and ambler campus
         map.loadImage(
-            'https://docs.mapbox.com/mapbox-gl-js/assets/custom_marker.png',
+            'https://raw.githubusercontent.com/fmvaldezg/bike-rideTU/main/logo.png',
             (error, image) => {
                 if (error) throw error;
                 map.addImage('custom-marker', image);
@@ -125,7 +125,9 @@ body { margin: 0; padding: 0; }
                             },
                             {
                                 "type": "Feature",
-                                "properties": {},
+                                "properties": {
+                                    "name": "Temple University Ambler Campus"
+                                },
                                 "geometry": {
                                     "coordinates": [
                                         -75.19056285457283,
@@ -144,6 +146,7 @@ body { margin: 0; padding: 0; }
                     id: 'campus',
                     layout: {
                         'icon-image': 'custom-marker',
+                        'icon-size': 0.2,
                         // get the title name from the source's "title" property
                         'text-field': ['get', 'name'],
                         'text-font': [
@@ -152,7 +155,12 @@ body { margin: 0; padding: 0; }
                         ],
                         'text-offset': [0, 1.25],
                         'text-anchor': 'top'
-                    }
+                    },
+                    paint: {
+                        "text-color": "black",
+                        "text-halo-color": "#fff",
+                        "text-halo-width": 2
+                        }
                 });
             });
 
@@ -200,7 +208,7 @@ body { margin: 0; padding: 0; }
             map.setPaintProperty('line', 'line-gradient', [
                 'step',
                 ['line-progress'],
-                'red',
+                '#B50043',
                 animationPhase,
                 'rgba(255, 0, 0, 0)'
             ]);
