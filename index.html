@@ -96,7 +96,7 @@ body { margin: 0; padding: 0; }
 
     await map.once('idle');
     // The total animation duration, in milliseconds
-    const animationDuration = 35000;
+    const animationDuration = 40000;
     // Use the https://turfjs.org/ library to calculate line distances and
     // sample the line at a given percentage with the turf.along function.
     const path = turf.lineString(pinRoute);
@@ -105,52 +105,52 @@ body { margin: 0; padding: 0; }
     let start;
     let animationFrameId;
     function frame(time) {
-        if (!start) start = time;
-        const animationPhase = (time - start) / animationDuration;
-        if (animationPhase > 1) {
-            return;
-        }
-
-        // Get the new latitude and longitude by sampling along the path
-        const alongPath = turf.along(path, pathDistance * animationPhase)
-            .geometry.coordinates;
-        const lngLat = {
-            lng: alongPath[0],
-            lat: alongPath[1]
-        };
-
-        // Sample the terrain elevation. We round to an integer value to
-        // prevent showing a lot of digits during the animation
-        const elevation = Math.floor(
-            // Do not use terrain exaggeration to get actual meter values
-            map.queryTerrainElevation(lngLat, { exaggerated: false })
-        );
-
-        // Update the popup altitude value and marker location
-        popup.setHTML('Altitude: ' + elevation + 'm<br/>');
-        marker.setLngLat(lngLat);
-
-        // Set the map's center to the new position of the pin
-        map.setCenter(lngLat);
-
-        // Reduce the visible length of the line by using a line-gradient to cutoff the line
-        // animationPhase is a value between 0 and 1 that reprents the progress of the animation
-        map.setPaintProperty('line', 'line-gradient', [
-            'step',
-            ['line-progress'],
-            'red',
-            animationPhase,
-            'rgba(255, 0, 0, 0)'
-        ]);
-
-        // Rotate the camera at a slightly lower speed to give some parallax effect in the background
-        const rotation = 150 - animationPhase * 40.0;
-        map.setBearing(rotation % -100);
-
-        // Request the next animation frame
-        animationFrameId = window.requestAnimationFrame(frame);
+    if (!start) start = time;
+    const animationPhase = (time - start) / animationDuration;
+    if (animationPhase > 1) {
+        return;
     }
 
+    // Sample the distance traveled along the line in meters
+    const distanceTraveled = pathDistance * animationPhase;
+
+    // Convert meters to miles
+    const distanceTraveledMiles = distanceTraveled * 0.621;
+
+    // Get the new latitude and longitude by sampling along the path
+    const alongPath = turf.along(path, distanceTraveled)
+        .geometry.coordinates;
+    const lngLat = {
+        lng: alongPath[0],
+        lat: alongPath[1]
+    };
+
+    // Update the popup with the distance traveled in miles
+    popup.setHTML('Distance Traveled: ' + distanceTraveledMiles.toFixed(2) + ' miles<br/>');
+
+    // Update the marker location
+    marker.setLngLat(lngLat);
+
+    // Set the map's center to the new position of the pin
+    map.setCenter(lngLat);
+
+    // Reduce the visible length of the line by using a line-gradient to cutoff the line
+    // animationPhase is a value between 0 and 1 that reprents the progress of the animation
+    map.setPaintProperty('line', 'line-gradient', [
+        'step',
+        ['line-progress'],
+        'red',
+        animationPhase,
+        'rgba(255, 0, 0, 0)'
+    ]);
+
+    // Rotate the camera at a slightly lower speed to give some parallax effect in the background
+    //const rotation = 15 - animationPhase * 20.0;
+    //map.setBearing(rotation % 10);
+
+    // Request the next animation frame
+    animationFrameId = window.requestAnimationFrame(frame);
+}
     // Add event listener to restart button
     document.getElementById('restartButton').addEventListener('click', function() {
         // Reset start variable to null to restart animation
