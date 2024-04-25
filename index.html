@@ -96,78 +96,133 @@ body { margin: 0; padding: 0; }
             'line-join': 'round'
         }
     });
+    map.on('load', () => {
+        //Add Markers for main campus and ambler campus
+        map.loadImage(
+            'https://docs.mapbox.com/mapbox-gl-js/assets/custom_marker.png',
+            (error, image) => {
+                if (error) throw error;
+                map.addImage('custom-marker', image);
 
-    await map.once('idle');
-    // The total animation duration, in milliseconds
-    const animationDuration = 40000;
-    // Use the https://turfjs.org/ library to calculate line distances and
-    // sample the line at a given percentage with the turf.along function.
-    const path = turf.lineString(pinRoute);
-    // Get the total line distance
-    const pathDistance = turf.lineDistance(path);
-    let start;
-    let animationFrameId;
-    function frame(time) {
-    if (!start) start = time;
-    const animationPhase = (time - start) / animationDuration;
-    if (animationPhase > 1) {
-        return;
-    }
+                map.addSource('campus', {
+                    type: 'geojson',
+                    data: {
+                        "type": "FeatureCollection",
+                        "features": [
+                            {
+                                "type": "Feature",
+                                "properties": {
+                                    "name": "Temple University Main Campus"
+                                },
+                                "geometry": {
+                                    "coordinates": [
+                                        -75.15249609656414,
+                                        39.98413394608136
+                                    ],
+                                    "type": "Point"
+                                },
+                                "id": 0
+                            },
+                            {
+                                "type": "Feature",
+                                "properties": {},
+                                "geometry": {
+                                    "coordinates": [
+                                        -75.19056285457283,
+                                        40.166717806691935
+                                    ],
+                                    "type": "Point"
+                                }
+                            }
+                        ]
+                    }
+                });
 
-    // Sample the distance traveled along the line in meters
-    const distanceTraveled = pathDistance * animationPhase;
+                map.addLayer({
+                    type: 'symbol',
+                    source: 'campus',
+                    id: 'campus',
+                    layout: {
+                        'icon-image': 'custom-marker',
+                        // get the title name from the source's "title" property
+                        'text-field': ['get', 'name'],
+                        'text-font': [
+                            'Open Sans Semibold',
+                            'Arial Unicode MS Bold'
+                        ],
+                        'text-offset': [0, 1.25],
+                        'text-anchor': 'top'
+                    }
+                });
+            });
 
-    // Convert meters to miles
-    const distanceTraveledMiles = distanceTraveled * 0.621;
+        // The total animation duration, in milliseconds
+        const animationDuration = 40000;
+        // Use the https://turfjs.org/ library to calculate line distances and
+        // sample the line at a given percentage with the turf.along function.
+        const path = turf.lineString(pinRoute);
+        // Get the total line distance
+        const pathDistance = turf.lineDistance(path);
+        let start;
+        let animationFrameId;
+        function frame(time) {
+            if (!start) start = time;
+            const animationPhase = (time - start) / animationDuration;
+            if (animationPhase > 1) {
+                return;
+            }
 
-    // Get the new latitude and longitude by sampling along the path
-    const alongPath = turf.along(path, distanceTraveled)
-        .geometry.coordinates;
-    const lngLat = {
-        lng: alongPath[0],
-        lat: alongPath[1]
-    };
+            // Sample the distance traveled along the line in meters
+            const distanceTraveled = pathDistance * animationPhase;
 
-    // Update the popup with the distance traveled in miles
-    popup.setHTML('Distance Traveled: ' + distanceTraveledMiles.toFixed(2) + ' miles<br/>');
+            // Convert meters to miles
+            const distanceTraveledMiles = distanceTraveled * 0.621;
 
-    // Update the marker location
-    marker.setLngLat(lngLat);
+            // Get the new latitude and longitude by sampling along the path
+            const alongPath = turf.along(path, distanceTraveled)
+                .geometry.coordinates;
+            const lngLat = {
+                lng: alongPath[0],
+                lat: alongPath[1]
+            };
 
-    // Set the map's center to the new position of the pin
-    map.setCenter(lngLat);
+            // Update the popup with the distance traveled in miles
+            popup.setHTML('Distance Traveled: ' + distanceTraveledMiles.toFixed(2) + ' miles<br/>');
 
-    // Reduce the visible length of the line by using a line-gradient to cutoff the line
-    // animationPhase is a value between 0 and 1 that reprents the progress of the animation
-    map.setPaintProperty('line', 'line-gradient', [
-        'step',
-        ['line-progress'],
-        'red',
-        animationPhase,
-        'rgba(255, 0, 0, 0)'
-    ]);
+            // Update the marker location
+            marker.setLngLat(lngLat);
 
-    // Rotate the camera at a slightly lower speed to give some parallax effect in the background
-    //const rotation = 15 - animationPhase * 20.0;
-    //map.setBearing(rotation % 10);
+            // Set the map's center to the new position of the pin
+            map.setCenter(lngLat);
 
-    // Request the next animation frame
-    animationFrameId = window.requestAnimationFrame(frame);
-}
-    // Add event listener to restart button
-    document.getElementById('restartButton').addEventListener('click', function() {
-        // Reset start variable to null to restart animation
-        start = null;
-        // Stop the current animation loop
-        cancelAnimationFrame(animationFrameId);
-        // Start a new animation loop
+            // Reduce the visible length of the line by using a line-gradient to cutoff the line
+            // animationPhase is a value between 0 and 1 that represents the progress of the animation
+            map.setPaintProperty('line', 'line-gradient', [
+                'step',
+                ['line-progress'],
+                'red',
+                animationPhase,
+                'rgba(255, 0, 0, 0)'
+            ]);
+
+            // Request the next animation frame
+            animationFrameId = window.requestAnimationFrame(frame);
+        }
+
+        // Add event listener to restart button
+        document.getElementById('restartButton').addEventListener('click', function() {
+            // Reset start variable to null to restart animation
+            start = null;
+            // Stop the current animation loop
+            cancelAnimationFrame(animationFrameId);
+            // Start a new animation loop
+            animationFrameId = window.requestAnimationFrame(frame);
+        });
+
+        // Start the animation loop
         animationFrameId = window.requestAnimationFrame(frame);
     });
-
-    // Start the animation loop
-    animationFrameId = window.requestAnimationFrame(frame);
 })();
-
 </script>
 
 </body>
