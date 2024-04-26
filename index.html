@@ -20,9 +20,10 @@ body { margin: 0; padding: 0; }
 <div id="map"></div>
 <div class="btn-container">
     <button class="btn btn--green round" id="restartButton">Restart Animation</button>
+    <button class="btn btn--blue round" id="toggleButton">Start/Pause Animation</button>
 </div>
 <script>
-	mapboxgl.accessToken = 'pk.eyJ1IjoiZm12YWxkZXpnODQiLCJhIjoiY2w5eWJzMzkwMDNiaDNvbGltamV1ajdvNiJ9.esyugI1HyBVPAQcRN551xw';
+mapboxgl.accessToken = 'pk.eyJ1IjoiZm12YWxkZXpnODQiLCJhIjoiY2w5eWJzMzkwMDNiaDNvbGltamV1ajdvNiJ9.esyugI1HyBVPAQcRN551xw';
 (async () => {
     const map = new mapboxgl.Map({
         container: 'map',
@@ -173,10 +174,13 @@ body { margin: 0; padding: 0; }
         const pathDistance = turf.lineDistance(path);
         let start;
         let animationFrameId;
+        let animationRunning = true; // Track animation state
+        let animationProgress = 0; // Track animation progress
+
         function frame(time) {
             if (!start) start = time;
             const animationPhase = (time - start) / animationDuration;
-            if (animationPhase > 1) {
+            if (animationPhase > 1 || !animationRunning) {
                 return;
             }
 
@@ -221,10 +225,29 @@ body { margin: 0; padding: 0; }
         document.getElementById('restartButton').addEventListener('click', function() {
             // Reset start variable to null to restart animation
             start = null;
+            // Reset animation progress
+            animationProgress = 0;
             // Stop the current animation loop
             cancelAnimationFrame(animationFrameId);
             // Start a new animation loop
             animationFrameId = window.requestAnimationFrame(frame);
+        });
+
+        // Add event listener to toggle button
+        document.getElementById('toggleButton').addEventListener('click', function() {
+            animationRunning = !animationRunning; // Toggle animation state
+            // If animation is paused, store the current progress
+            if (!animationRunning) {
+                cancelAnimationFrame(animationFrameId);
+                const currentTime = performance.now();
+                const elapsedTime = currentTime - start;
+                animationProgress = (elapsedTime % animationDuration) / animationDuration;
+            }
+            // If animation is running, start the animation frame
+            else {
+                start = performance.now() - (animationProgress * animationDuration);
+                animationFrameId = window.requestAnimationFrame(frame);
+            }
         });
 
         // Start the animation loop
