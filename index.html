@@ -19,9 +19,10 @@ body { margin: 0; padding: 0; }
 <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
 <div id="map"></div>
 <div class="btn-container">
-    <button class="btn btn--green round" id="restartButton">Restart Animation</button>
-    <button class="btn btn--blue round" id="toggleButton">Start/Pause Animation</button>
+    <button class="btn btn--blue round" id="toggleButton"><svg class="icon h18 w18"><use xlink:href="#icon-play"></use></svg><svg class="icon h18 w18"><use xlink:href="#icon-pause"></use></svg></button>
+    <button class="btn btn--green round" id="restartButton"><svg class="icon h18 w18"><use xlink:href="#icon-refresh"></use></svg></button>
 </div>
+
 <script>
 mapboxgl.accessToken = 'pk.eyJ1IjoiZm12YWxkZXpnODQiLCJhIjoiY2w5eWJzMzkwMDNiaDNvbGltamV1ajdvNiJ9.esyugI1HyBVPAQcRN551xw';
 (async () => {
@@ -161,7 +162,7 @@ mapboxgl.accessToken = 'pk.eyJ1IjoiZm12YWxkZXpnODQiLCJhIjoiY2w5eWJzMzkwMDNiaDNvb
                         "text-color": "black",
                         "text-halo-color": "#fff",
                         "text-halo-width": 2
-                        }
+                    }
                 });
             });
 
@@ -242,11 +243,13 @@ mapboxgl.accessToken = 'pk.eyJ1IjoiZm12YWxkZXpnODQiLCJhIjoiY2w5eWJzMzkwMDNiaDNvb
                 const currentTime = performance.now();
                 const elapsedTime = currentTime - start;
                 animationProgress = (elapsedTime % animationDuration) / animationDuration;
+                document.getElementById('restartButton').disabled = true; // Disable restart button
             }
             // If animation is running, start the animation frame
             else {
                 start = performance.now() - (animationProgress * animationDuration);
                 animationFrameId = window.requestAnimationFrame(frame);
+                document.getElementById('restartButton').disabled = false; // Enable restart button
             }
         });
 
